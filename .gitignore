@@ -6,7 +6,6 @@ __pycache__/
 # Build
 build/
 dist/
-*.spec
 
 # Temp
 *.tmp
