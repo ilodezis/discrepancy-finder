@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.log
+
+# Build
+build/
+dist/
+*.spec
+
+# Temp
+*.tmp
+*.bak
+
+# Excel файлы (если не нужны в репо)
+*.xlsx
+*.xls
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
