@@ -1,0 +1,6 @@
+SHA256 hash of Discrepancy_Finder.exe:
+
+d383d855041d99e9a4c4599c762c9c62070bcfdc3764b21c2fff643d934e8a02
+
+Сгенерировано командой:
+certutil -hashfile Discrepancy_Finder.exe SHA256
