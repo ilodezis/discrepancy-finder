@@ -22,7 +22,7 @@
 Стабильный релиз:  
 👉 [Скачать .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
 
-👉 [Скачать .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1-mac)
+👉 [Скачать .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
 
 Для Windows и macOS. 
 
