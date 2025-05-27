@@ -1,5 +1,7 @@
 # Discrepancy Finder
 
+**English version below 👇**
+
 **Discrepancy Finder** — инструмент для сравнения Excel-файлов (акт и реестр).  
 Определяет расхождения по ID и суммам, сохраняет результат в `.txt` в случае необходимости.
 
@@ -98,6 +100,7 @@ It detects discrepancies by ID and amounts, and can optionally save the result a
 ## 📥 Download
 
 Stable release:
+
 👉 [Download .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
 
 👉 [Download .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
