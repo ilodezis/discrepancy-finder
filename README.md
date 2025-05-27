@@ -73,7 +73,8 @@ MIT License — свободное использование и модифик�
 
 Для связи: [issues](https://github.com/ilodezis/discrepancy-finder/issues) или Telegram @ilodezis
 
-===
+---
+---
 
 # Discrepancy Finder
 
@@ -98,6 +99,7 @@ It detects discrepancies by ID and amounts, and can optionally save the result a
 
 Stable release:
 👉 [Download .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
+
 👉 [Download .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
 
 For Windows and macOS.
