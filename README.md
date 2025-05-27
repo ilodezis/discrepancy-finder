@@ -73,3 +73,79 @@ MIT License — свободное использование и модифик�
 
 Для связи: [issues](https://github.com/ilodezis/discrepancy-finder/issues) или Telegram @ilodezis
 
+===
+
+# Discrepancy Finder
+
+**Discrepancy Finder** is a tool for comparing Excel files (registry and act).
+It detects discrepancies by ID and amounts, and can optionally save the result as a `.txt` file.
+
+---
+
+## 🔧 Features
+
+* 📂 Supports `.xlsx` and `.xls`
+* 🆔 Detects mismatches by ID and amounts
+* 💾 Exports reports in `.txt`
+* 🌐 Russian and English language support
+* 🖥️ PyQt5-based interface
+* 🔒 Fully offline, no external connections
+* 🪪 Safe for working with personal data (see `SECURITY_NOTES.md`)
+
+---
+
+## 📥 Download
+
+Stable release:
+👉 [Download .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
+👉 [Download .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
+
+For Windows and macOS.
+
+---
+
+## 🛠️ How to build `.exe` manually
+
+See [build\_instructions.md](build_instructions.md) — works on Windows with Python 3.11+ and installed `PyInstaller`.
+
+---
+
+## 🧾 Project structure
+
+```plaintext
+├── Discrepancy_Finder.py        # main GUI file
+├── requirements.txt             # dependencies
+├── Discrepancy_Finder.spec      # PyInstaller config
+├── assets/                      # icon and font
+├── README.md
+├── build_instructions.md
+├── sha256.txt                   # binary hash for verification
+└── SECURITY_NOTES.md           # security and behavior notes
+```
+
+---
+
+## 🔐 Security & Audit
+
+Discrepancy Finder contains **no**:
+
+* network calls (`requests`, `urllib`, sockets)
+* critical system calls (`os.system`, `subprocess`, `eval`)
+* logging, metric collection, or history tracking
+
+All logic and risks are described in detail in [SECURITY\_NOTES.md](SECURITY_NOTES.md).
+
+The program is designed **strictly for manual local use**.
+
+---
+
+## 📄 License
+
+MIT License — free to use and modify.
+
+---
+
+## 📬 Feedback
+
+For feedback: [issues](https://github.com/ilodezis/discrepancy-finder/issues) or Telegram @ilodezis
+
