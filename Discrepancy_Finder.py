@@ -111,7 +111,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.tr = T[lang_code]
         self.setWindowTitle(self.tr['window_title'])
-        self.setWindowIcon(QIcon(str(BASE_DIR / 'assets' / 'icons' / 'icons8-yandex-international-240.ico')))
+        self.setWindowIcon(QIcon(resource_path('assets/icons/icons8-yandex-international-240.ico')))
         self.resize(900, 600)
         self.registry_path = None
         self.act_path = None
@@ -324,14 +324,22 @@ class MainWindow(QMainWindow):
         logging.getLogger().setLevel(logging.INFO)
 
 def resource_path(relative_path):
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.abspath(relative_path)
+    # Use sys._MEIPASS for PyInstaller compatibility
+    base_path = getattr(sys, '_MEIPASS', BASE_DIR)
+    return os.path.join(base_path, relative_path)
 
 if __name__ == '__main__':
-    # Создание приложения и подключение шрифта
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(resource_path('assets/icons/icons8-yandex-international-240.ico')))
+    
+    # Загрузка иконки
+    icon_path = resource_path('assets/icons/icons8-yandex-international-240.ico')
+    app.setWindowIcon(QIcon(icon_path))
+    
+    # Загрузка шрифта Inter
+    font_path = resource_path('assets/fonts/Inter-VariableFont_opsz,wght.ttf')
+    QFontDatabase.addApplicationFont(font_path)
+    app.setFont(QFont('Inter', 10))
+    
     # Глобальная таблица стилей
     app.setStyleSheet("""
         QWidget { font-family: 'Inter'; }
@@ -348,13 +356,6 @@ if __name__ == '__main__':
         QGroupBox { background-color: #FFFFFF; border: 1px solid #CCCCCC; border-radius: 8px; padding: 8px; margin-top: 20px; }
         QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; margin-left: 10px; background-color: transparent; }
     """)
-    # Загрузка кастомного шрифта Inter
-    font_path = resource_path('assets/fonts/Inter-VariableFont_opsz,wght.ttf')
-    font_id = QFontDatabase.addApplicationFont(font_path)
-    if font_id != -1:
-        families = QFontDatabase.applicationFontFamilies(font_id)
-        if families:
-            app.setFont(QFont(families[0], 10))
     # Палитра акцентов
     pal = QPalette()
     pal.setColor(QPalette.Window, QColor(240,240,240))

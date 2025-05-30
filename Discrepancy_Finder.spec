@@ -1,15 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 
-from PyInstaller.utils.hooks import collect_data_files
+# Определяем пути
+icon_file = os.path.abspath(os.path.join('assets', 'icons', 'icons8-yandex-international-240.ico'))
+font_file = os.path.abspath(os.path.join('assets', 'fonts', 'Inter-VariableFont_opsz,wght.ttf'))
 
-# Соберём все вложенные файлы в assets
-assets_datas = collect_data_files('assets', include_py_files=False)
+# Добавляем файлы в datas
+datas = [
+    (icon_file, 'assets/icons'),
+    (font_file, 'assets/fonts'),
+]
 
 a = Analysis(
     ['Discrepancy_Finder.py'],
     pathex=[],
     binaries=[],
-    datas=assets_datas,
+    datas=datas,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -37,9 +43,21 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # True — если нужна консоль, False — для GUI
+    console=False,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=icon_file,  # Используем абсолютный путь к иконке
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='Discrepancy_Finder'
 )
