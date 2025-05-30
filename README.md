@@ -101,9 +101,9 @@ It detects discrepancies by ID and amounts, and can optionally save the result a
 
 Stable release:
 
-👉 [Download .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
+👉 [Download .exe (v1.0.2-win)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.2-win)
 
-👉 [Download .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
+👉 [Download .app (v1.0.2-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.2-mac)
 
 For Windows and macOS.
 
