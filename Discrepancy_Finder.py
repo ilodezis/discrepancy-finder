@@ -40,7 +40,7 @@ T = {
         'act_label': 'Акт: --',
         'sum_registry': 'Сумма реестра: 0.00',
         'sum_act': 'Сумма акта: 0.00',
-        'warn_load': 'Загрузите оба файлы перед сравнением.',
+        'warn_load': 'Загрузите оба файла перед сравнением.',
         'err_id': 'Не найдены колонки ID. Доступные: {}',
         'err_amount': 'Не найдены колонки суммы. Доступные: {}',
         'err_load': 'Не удалось загрузить {}: {}',
@@ -97,6 +97,15 @@ class PandasModel(QAbstractTableModel):
             return str(self._df.columns[section])
         return None
 
+class LogHandler(logging.Handler):
+    def __init__(self, log_widget):
+        super().__init__()
+        self.log_widget = log_widget
+
+    def emit(self, record):
+        msg = self.format(record)
+        self.log_widget.append(msg)
+
 class MainWindow(QMainWindow):
     def __init__(self, lang_code):
         super().__init__()
@@ -108,6 +117,7 @@ class MainWindow(QMainWindow):
         self.act_path = None
         self.diffs = pd.DataFrame()
         self._build_ui()
+        self._setup_logging()
 
     def _build_ui(self):
         # Reminder banner
@@ -238,18 +248,26 @@ class MainWindow(QMainWindow):
     def _compare(self):
         if not(self.registry_path and self.act_path):
             QMessageBox.warning(self, 'Warning', self.tr['warn_load']); return
-        dlg = QProgressDialog(self.tr['dlg_compare'], None, 0, 0, self)
-        dlg.setWindowModality(Qt.WindowModal); dlg.setCancelButton(None); dlg.show(); QApplication.processEvents()
+        dlg = QProgressDialog(self.tr['dlg_compare'], None, 0, 100, self)
+        dlg.setWindowTitle(self.tr['dlg_compare'] if self.tr['dlg_compare'] == 'Сравнение...' else 'Finding discrepancies...')
+        dlg.setWindowModality(Qt.WindowModal)
+        dlg.setMinimumWidth(300)  # Ensure the progress bar stretches properly
+        dlg.setCancelButton(None)
+        dlg.setValue(0)
+        dlg.show()
+        QApplication.processEvents()
         hdr1 = self._detect_header(self.registry_path)
         hdr2 = self._detect_header(self.act_path)
         try:
             df1 = pd.read_excel(self.registry_path, engine='openpyxl', header=hdr1 or 0)
+            dlg.setValue(50)  # Update progress
         except Exception as e:
-            dlg.close(); QMessageBox.critical(self, 'Error',self.tr['err_load'].format(Path(self.registry_path).name,str(e)));return
+            dlg.close(); QMessageBox.critical(self, 'Error', self.tr['err_load'].format(Path(self.registry_path).name, str(e))); return
         try:
             df2 = pd.read_excel(self.act_path, engine='openpyxl', header=hdr2 or 0)
+            dlg.setValue(100)  # Update progress
         except Exception as e:
-            dlg.close(); QMessageBox.critical(self,'Error',self.tr['err_load'].format(Path(self.act_path).name,str(e)));return
+            dlg.close(); QMessageBox.critical(self, 'Error', self.tr['err_load'].format(Path(self.act_path).name, str(e))); return
         dlg.close()
         id_list1 = [c for c in df1.columns if any(k in str(c).lower() for k in ID_KEYS)]
         if not id_list1: QMessageBox.critical(self,'Error',self.tr['err_id'].format(list(df1.columns)));return
@@ -299,10 +317,21 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self,self.tr['save_dialog'],self.tr['msg_saved'].format(fn))
         logging.info(f"Saved to {fn}")
 
+    def _setup_logging(self):
+        log_handler = LogHandler(self.log)
+        log_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        logging.getLogger().addHandler(log_handler)
+        logging.getLogger().setLevel(logging.INFO)
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.abspath(relative_path)
+
 if __name__ == '__main__':
     # Создание приложения и подключение шрифта
     app = QApplication(sys.argv)
-    app.setWindowIcon(QIcon(str(BASE_DIR / 'assets' / 'icons' / 'icons8-yandex-international-240.ico')))
+    app.setWindowIcon(QIcon(resource_path('assets/icons/icons8-yandex-international-240.ico')))
     # Глобальная таблица стилей
     app.setStyleSheet("""
         QWidget { font-family: 'Inter'; }
@@ -320,12 +349,8 @@ if __name__ == '__main__':
         QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; margin-left: 10px; background-color: transparent; }
     """)
     # Загрузка кастомного шрифта Inter
-    font_path = BASE_DIR / 'assets' / 'fonts' / 'Inter-VariableFont_opsz,wght.ttf'
-    font_id = QFontDatabase.addApplicationFont(str(font_path))
-    if font_id != -1:
-        families = QFontDatabase.applicationFontFamilies(font_id)
-        if families:
-            app.setFont(QFont(families[0], 10))
+    font_path = resource_path('assets/fonts/Inter-VariableFont_opsz,wght.ttf')
+    font_id = QFontDatabase.addApplicationFont(font_path)
     if font_id != -1:
         families = QFontDatabase.applicationFontFamilies(font_id)
         if families:
@@ -336,8 +361,15 @@ if __name__ == '__main__':
     pal.setColor(QPalette.Highlight, QColor(255,0,0))
     app.setPalette(pal)
     # Выбор языка
-    lang, ok = QInputDialog.getItem(None, T['en']['window_title'], 'Select language / Выберите язык', ['English','Русский'], 0, False)
-    code = 'en' if ok and lang == 'English' else 'ru'
+    lang, _ = QInputDialog.getItem(
+        None, 
+        T['en']['window_title'], 
+        'Select language / Выберите язык', 
+        ['English', 'Русский'], 
+        0, 
+        editable=False  # Ensure no "Cancel" button
+    )
+    code = 'en' if lang == 'English' else 'ru'
     win = MainWindow(code)
     win.show()
     sys.exit(app.exec_())
