@@ -43,8 +43,13 @@ from PyQt5.QtWidgets import (
 from logic import ExcelProcessor
 from background import CompareFilesTask
 
-# Initialize logger
-LOG_PATH = Path.home() / "discrepancy_finder.log"
+# Initialize Excel processor
+excel_processor = ExcelProcessor()
+
+# Initialize logger using path from config
+LOG_PATH = Path.home() / excel_processor.config.get(
+    "log_path", "discrepancy_finder.log"
+)
 logging.basicConfig(
     filename=str(LOG_PATH),
     level=logging.INFO,
@@ -54,9 +59,6 @@ logging.basicConfig(
 
 # Base directory for resources
 BASE_DIR = Path(__file__).parent.resolve()
-
-# Initialize Excel processor
-excel_processor = ExcelProcessor()
 
 
 class PandasModel(QAbstractTableModel):
