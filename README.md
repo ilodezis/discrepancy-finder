@@ -26,8 +26,8 @@
 
 | ОС | Ссылка |
 |----|--------|
-| Windows | [Discrepancy Finder 1.1.x .exe](https://github.com/ilodezis/discrepancy-finder/releases) |
-| macOS (Apple Silicon) | [Discrepancy Finder 1.1.x .app](https://github.com/ilodezis/discrepancy-finder/releases) |
+| Windows | [Discrepancy Finder 1.1.0 .exe](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.1.0-mac) |
+| macOS (Apple Silicon) | [Discrepancy Finder 1.1.0 .app](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.1.0-mac) |
 
 ---
 
