@@ -13,3 +13,12 @@
 ```bash
 pip install -r requirements.txt
 pip install pyinstaller==6.13.0
+```
+
+## 🚀 Сборка
+
+```bash
+pyinstaller Discrepancy_Finder.spec
+```
+
+Готовый `exe` будет в каталоге `dist/Discrepancy_Finder`.
