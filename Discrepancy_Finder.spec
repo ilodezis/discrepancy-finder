@@ -1,22 +1,30 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+from pathlib import Path
 
-# Определяем пути
-icon_file = os.path.abspath(os.path.join('assets', 'icons', 'icons8-yandex-international-240.ico'))
-font_file = os.path.abspath(os.path.join('assets', 'fonts', 'Inter-VariableFont_opsz,wght.ttf'))
+# Define paths
+base_dir = Path('c:/Users/ilode/OneDrive/Documents/Projects/discrepancy-finder').resolve()
+icon_file = str(base_dir / 'assets' / 'icons' / 'icons8-yandex-international-240.ico')
+font_file = str(base_dir / 'assets' / 'fonts' / 'Inter-VariableFont_opsz,wght.ttf')
+i18n_dir = str(base_dir / 'i18n')
+config_file = str(base_dir / 'config.yaml')
+style_file = str(base_dir / 'style.qss')
 
-# Добавляем файлы в datas
+# Add files to datas
 datas = [
     (icon_file, 'assets/icons'),
     (font_file, 'assets/fonts'),
+    (i18n_dir, 'i18n'),
+    (config_file, '.'),
+    (style_file, '.'),
 ]
 
 a = Analysis(
-    ['Discrepancy_Finder.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=['PyQt5.QtWidgets', 'pandas', 'openpyxl', 'yaml'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -1,3 +1,4 @@
-pandas
-openpyxl
-PyQt5
+pandas>=2.2,<3.0
+openpyxl>=3.1
+PyQt5>=5.15
+pyyaml>=6.0

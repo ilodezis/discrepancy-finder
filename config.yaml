@@ -1,0 +1,35 @@
+# General settings
+epsilon: 0.01  # Minimum difference to consider a discrepancy
+log_path: "discrepancy_finder.log"  # Path to log file relative to user home
+excel:
+  max_header_rows: 50  # Maximum rows to scan for header detection
+  engine: "openpyxl"  # Excel engine to use
+
+# Column identification
+id_columns:
+  - "идентификатор заказа"
+  - "order id"
+  - "id заказа"  
+  - "order no"
+
+amount_columns:
+  - "сумма"
+  - "amount"
+
+# Skip rows containing these values (case-insensitive)
+skip_rows:
+  - "итого"
+  - "total"
+
+# UI settings
+window:
+  width: 900
+  height: 600
+
+colors:
+  window_background: "#F0F0F0"
+  accent: "#FF0000"  # RGB format
+  shadow:
+    blur: 15
+    offset: 5
+    color: [0, 0, 0, 80]  # RGBA format

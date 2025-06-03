@@ -1,22 +1,45 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 *.log
+*.so
 
-# Build
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# PyInstaller
 build/
 dist/
+*.manifest
+*.spec
 
-# Temp
-*.tmp
-*.bak
+# Virtual environment
+venv/
+env/
+.env/
+.venv/
 
-# Excel файлы (если не нужны в репо)
-*.xlsx
-*.xls
-
-# IDE / OS
+# IDE / Editor
 .vscode/
 .idea/
+*.swp
+*.swo
+*.swn
+*.bak
+
+# OS
 .DS_Store
 Thumbs.db
+desktop.ini
+*.lnk
+
+# Project specific
+*.xlsx
+*.xls
+*.csv
+discrepancy_finder.log
+localpycs/

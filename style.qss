@@ -1,0 +1,56 @@
+/* Base widget styling */
+QWidget {
+    font-family: 'Inter';
+}
+
+/* Buttons and input fields */
+QPushButton, QLineEdit, QComboBox {
+    border: 1px solid #CCCCCC;
+    border-radius: 6px;
+    padding: 4px 8px;
+    background-color: #FFFFFF;
+}
+
+QPushButton:hover {
+    background-color: #F5F5F5;
+}
+
+QPushButton:pressed {
+    background-color: #E6E6E6;
+}
+
+/* Tables */
+QTableWidget, QTableView {
+    border: 1px solid #CCCCCC;
+    border-radius: 6px;
+    gridline-color: #E0E0E0;
+}
+
+/* Toolbar */
+QToolBar {
+    background: #ECECEC;
+    spacing: 6px;
+    border-radius: 6px;
+}
+
+/* Main window */
+QMainWindow {
+    background-color: #F0F0F0;
+}
+
+/* Group boxes */
+QGroupBox {
+    background-color: #FFFFFF;
+    border: 1px solid #CCCCCC;
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 20px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 5px;
+    margin-left: 10px;
+    background-color: transparent;
+}
