@@ -28,7 +28,7 @@ window:
 
 colors:
   window_background: "#F0F0F0"
-  accent: "#FF0000"  # RGB format
+  accent: "#FF0000"  # Hex color code
   shadow:
     blur: 15
     offset: 5
