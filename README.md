@@ -1,156 +1,187 @@
-# Discrepancy Finder
+# Discrepancy Finder 🕵️‍♂️
 
 **English version below 👇**
 
-**Discrepancy Finder** — инструмент для сравнения Excel-файлов (акт и реестр).  
-Определяет расхождения по ID и суммам, сохраняет результат в `.txt` в случае необходимости.
+`Discrepancy Finder` — кроссплатформенный офлайн‑инструмент для поиска расхождений между двумя Excel‑файлами (реестр ↔ акт).
+Версия **1.1.x**: конфиги, переводы и стили вынесены в отдельные файлы, тяжёлая логика переведена в фоновый поток, код приведён к PEP‑8.
 
 ---
 
-## 🔧 Возможности
+## 🔧 Ключевые возможности
 
-- 📂 Поддержка `.xlsx` и `.xls`
-- 🆔 Поиск несовпадений по ID и суммам
-- 💾 Выгрузка отчёта в `.txt`
-- 🌐 Поддержка русского и английского языков
-- 🖥️ Интерфейс на PyQt5
-- 🔒 Полностью офлайн, без внешних подключений
-- 🪪 Безопасна для работы с ПД (см. `SECURITY_NOTES.md`)
-
----
-
-## 📥 Скачать
-
-Стабильный релиз:  
-👉 [Скачать .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
-
-👉 [Скачать .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
-
-Для Windows и macOS. 
+| Что умеет | Как реализовано |
+|-----------|-----------------|
+| 📂 Читает `.xlsx / .xls` | `pandas + openpyxl` |
+| 🆔 Сверяет ID и суммы | автопоиск колонок, фильтр «эпсилон» |
+| 💾 Экспорт отчёта в `.txt` | отдельная кнопка *Save* |
+| 🌐 Локализация (ru / en) | строки в `i18n/*.json` |
+| 🎨 Кастомизация внешнего вида | `style.qss`, цвета в `config.yaml` |
+| ⚙️ Настройки без ребилда | все «магические» цифры в `config.yaml` |
+| ⏱ UI не зависает | сравнение в `QRunnable` + `QThreadPool` |
+| 🔒 Полностью офлайн | **нет** сетевых вызовов (см. `SECURITY_NOTES.md`) |
 
 ---
 
-## 🛠️ Как собрать `.exe` вручную
+## 📥 Скачать готовый билд
 
-См. [build_instructions.md](build_instructions.md)  
-Подходит для Windows с Python 3.11+ и установленным `PyInstaller`.
-
----
-
-## 🧾 Структура проекта
-
-```plaintext
-├── Discrepancy_Finder.py        # основной GUI-файл
-├── requirements.txt             # зависимости
-├── Discrepancy_Finder.spec      # PyInstaller конфиг
-├── assets/                      # иконка и шрифт
-├── README.md
-├── build_instructions.md
-├── sha256.txt                   # хэш для сверки бинарника
-└── SECURITY_NOTES.md           # безопасность и поведение
-````
+| ОС | Ссылка |
+|----|--------|
+| Windows | [Discrepancy Finder 1.1.x .exe](https://github.com/ilodezis/discrepancy-finder/releases) |
+| macOS (Apple Silicon) | [Discrepancy Finder 1.1.x .app](https://github.com/ilodezis/discrepancy-finder/releases) |
 
 ---
 
-## 🔐 Безопасность и аудит
+## 🚀 Быстрый старт из исходников
 
-Discrepancy Finder не содержит:
-
-* сетевых вызовов (нет `requests`, `urllib`, сокетов)
-* критичных системных вызовов (`os.system`, `subprocess`, `eval`)
-* логирования, сбора метрик, сохранения истории
-
-Вся логика и риски подробно описаны в [SECURITY\_NOTES.md](SECURITY_NOTES.md).
-Программа предназначена **исключительно для локального запуска вручную**.
-
----
-
-## 📄 Лицензия
-
-MIT License — свободное использование и модификация.
-
----
-
-## 📬 Обратная связь
-
-Для связи: [issues](https://github.com/ilodezis/discrepancy-finder/issues) или Telegram @ilodezis
-
----
----
-
-# Discrepancy Finder
-
-**Discrepancy Finder** is a tool for comparing Excel files (registry and act).
-It detects discrepancies by ID and amounts, and can optionally save the result as a `.txt` file.
-
----
-
-## 🔧 Features
-
-* 📂 Supports `.xlsx` and `.xls`
-* 🆔 Detects mismatches by ID and amounts
-* 💾 Exports reports in `.txt`
-* 🌐 Russian and English language support
-* 🖥️ PyQt5-based interface
-* 🔒 Fully offline, no external connections
-* 🪪 Safe for working with personal data (see `SECURITY_NOTES.md`)
-
----
-
-## 📥 Download
-
-Stable release:
-
-👉 [Download .exe (v1.0.1)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.0.1)
-
-👉 [Download .dmg (v1.0.1-mac)](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.0.1-mac)
-
-For Windows and macOS.
-
----
-
-## 🛠️ How to build `.exe` manually
-
-See [build\_instructions.md](build_instructions.md) — works on Windows with Python 3.11+ and installed `PyInstaller`.
-
----
-
-## 🧾 Project structure
-
-```plaintext
-├── Discrepancy_Finder.py        # main GUI file
-├── requirements.txt             # dependencies
-├── Discrepancy_Finder.spec      # PyInstaller config
-├── assets/                      # icon and font
-├── README.md
-├── build_instructions.md
-├── sha256.txt                   # binary hash for verification
-└── SECURITY_NOTES.md           # security and behavior notes
+```bash
+git clone https://github.com/ilodezis/discrepancy-finder
+cd discrepancy-finder
+python -m venv venv
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
 ```
 
 ---
 
-## 🔐 Security & Audit
+## 🗂️ Структура проекта
 
-Discrepancy Finder contains **no**:
-
-* network calls (`requests`, `urllib`, sockets)
-* critical system calls (`os.system`, `subprocess`, `eval`)
-* logging, metric collection, or history tracking
-
-All logic and risks are described in detail in [SECURITY\_NOTES.md](SECURITY_NOTES.md).
-
-The program is designed **strictly for manual local use**.
+```plaintext
+├── main.py                   # GUI: окна, кнопки, меню
+├── logic.py                  # бизнес‑логика: Excel + сравнение
+├── background.py             # QRunnable для фонового сравнения
+├── config.yaml               # настройки (epsilon, цвета, размеры)
+├── i18n/                     # JSON‑файлы переводов
+│   ├── en.json
+│   └── ru.json
+├── style.qss                 # Qt‑стили
+├── assets/                   # иконки, шрифт Inter
+├── .pre-commit-config.yaml   # black + ruff автоформат
+├── requirements.txt          # минимальные версии библиотек
+├── Discrepancy_Finder.spec   # PyInstaller спецификация
+├── build_instructions.md     # как собрать .exe /.app
+├── SECURITY_NOTES.md         # описание модели безопасности
+```
 
 ---
 
-## 📄 License
+## 🛠️ Кастомизация
 
+### 🎨 Тема и цвета
+Правь `style.qss` — приложение подхватит изменения без ребилда.
+
+### ⚙️ Конфиг
+`config.yaml` → меняешь `epsilon` или фон окна, сохраняешь, перезапускаешь.
+
+### 🌐 Добавить язык
+1. Скопируй `i18n/en.json` → `i18n/xx.json`.
+2. Переведи значения.
+3. Запусти `main.py`, выбери новый язык — интерфейс переключится.
+
+---
+
+## 🔐 Безопасность
+
+* **Нет** сетевых вызовов (`requests`, `urllib`, sockets).
+* **Нет** опасных системных вызовов (`subprocess`, `eval`).
+* Код проверен `ruff`, аудит описан в `SECURITY_NOTES.md`.
+* Программа работает строго локально.
+
+---
+
+## 📄 Лицензия
+
+MIT — свободное использование и модификация с сохранением упоминания авторства.
+
+---
+
+## 📬 Обратная связь
+
+* Issues: <https://github.com/ilodezis/discrepancy-finder/issues>
+* Telegram: [@ilodezis](https://t.me/ilodezis)
+
+---
+---
+
+# Discrepancy Finder (EN)
+
+`Discrepancy Finder` is a cross‑platform offline tool that detects mismatches between two Excel files (registry ↔ act). Version **1.1.x** moves configs, translations, and styles to separate files, runs heavy logic in a background thread and formats code to PEP‑8.
+
+---
+
+## 🔧 Features
+
+* Reads `.xlsx`/`.xls` via **pandas + openpyxl**
+* Compares by **ID** and **Amount**
+* Exports report as `.txt`
+* Localization via `i18n/*.json` (ru / en by default)
+* Fully customizable look via `style.qss`
+* All tweakable settings live in `config.yaml`
+* Non‑blocking UI (`QRunnable` + `QThreadPool`)
+* **100 % offline** — see `SECURITY_NOTES.md`
+
+---
+
+## 📥 Download binaries
+
+| OS | Link |
+|----|------|
+| Windows | Discrepancy Finder 1.1.x .exe |
+| macOS | Discrepancy Finder 1.1.x .app |
+
+---
+
+## 🚀 Quick start (source)
+
+```bash
+git clone https://github.com/ilodezis/discrepancy-finder
+cd discrepancy-finder
+python -m venv venv
+source venv/bin/activate  # Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+---
+
+## 🗂️ Project layout
+
+```plaintext
+├── main.py                   # GUI: windows, buttons, menu
+├── logic.py                  # business logic: Excel comparison
+├── background.py             # QRunnable background comparison
+├── config.yaml               # settings (epsilon, colors, sizes)
+├── i18n/                     # JSON translations
+│   ├── en.json
+│   └── ru.json
+├── style.qss                 # Qt stylesheet
+├── assets/                   # icons, Inter font
+├── .pre-commit-config.yaml   # black + ruff autoformat
+├── requirements.txt          # minimal library versions
+├── Discrepancy_Finder.spec   # PyInstaller spec
+├── build_instructions.md     # build instructions
+├── SECURITY_NOTES.md         # security model description
+```
+
+---
+
+## 🛠️ Customisation
+* **Theme** — edit `style.qss`.
+* **Settings** — tweak `config.yaml` (e.g. `epsilon`, window size).
+* **New language** — add `i18n/xx.json`, restart app.
+
+---
+
+## 🔐 Security
+No network or dangerous sys‑calls. Details in `SECURITY_NOTES.md`.
+
+---
+
+## 📄 License
 MIT License — free to use and modify.
 
 ---
 
-## 📬 Feedback
-
-For feedback: [issues](https://github.com/ilodezis/discrepancy-finder/issues) or Telegram @ilodezis
-
+## 📬 Feedback
+* GitHub Issues
+* Telegram [@ilodezis](https://t.me/ilodezis)
