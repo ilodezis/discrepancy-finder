@@ -40,22 +40,23 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from logic import ExcelProcessor
+from logic import ExcelProcessor, load_config
 from background import CompareFilesTask
 
-# Initialize Excel processor
-excel_processor = ExcelProcessor()
+# Load configuration before setting up logging
+config = load_config()
 
-# Initialize logger using path from config
-LOG_PATH = Path.home() / excel_processor.config.get(
-    "log_path", "discrepancy_finder.log"
-)
+# Initialize logger using path from configuration
+LOG_PATH = Path.home() / config.get("log_path", "discrepancy_finder.log")
 logging.basicConfig(
     filename=str(LOG_PATH),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     filemode="a",
 )
+
+# Initialize Excel processor after logging is configured
+excel_processor = ExcelProcessor()
 
 # Base directory for resources
 BASE_DIR = Path(__file__).parent.resolve()
