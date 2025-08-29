@@ -125,7 +125,7 @@ MIT — свободное использование и модификация
 
 | OS | Link |
 |----|------|
-| Windows | [Discrepancy Finder 1.1.0 .exe](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.1.0-win) |
+| Windows | [Discrepancy Finder 1.1.0 .exe](https://github.com/ilodezis/discrepancy-finder/releases/tag/v.1.1.0-win) |
 | macOS (Apple Silicon) | [Discrepancy Finder 1.1.0 .app](https://github.com/ilodezis/discrepancy-finder/releases/tag/v1.1.0-mac) |
 
 ---
