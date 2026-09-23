@@ -1,8 +1,10 @@
 name: release
 
-# Push a tag like v1.2.0 to build Windows/macOS binaries and publish a GitHub Release.
-# Release notes are taken from the annotated tag message.
+# Builds Windows/macOS binaries and publishes a GitHub Release v<__version__>.
+# Run it from the Actions tab (or push a v* tag). Release notes come from the
+# matching "## v<version>" section of CHANGELOG.md.
 on:
+  workflow_dispatch:
   push:
     tags: ["v*"]
 
@@ -10,7 +12,23 @@ permissions:
   contents: write
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: |
+          tag="v$(sed -n 's/^__version__ = "\(.*\)"/\1/p' logic.py)"
+          if [ "${{ github.ref_type }}" = "tag" ] && [ "${{ github.ref_name }}" != "$tag" ]; then
+            echo "::error::Tag ${{ github.ref_name }} does not match __version__ ($tag)"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     strategy:
       fail-fast: false
       matrix:
@@ -30,9 +48,6 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements-dev.txt
 
-      - name: Check tag matches __version__
-        run: python -c "import logic, sys; sys.exit(0 if 'v' + logic.__version__ == '${{ github.ref_name }}' else 'tag ${{ github.ref_name }} != v' + logic.__version__)"
-
       - run: pytest -q
 
       - run: pyinstaller Discrepancy_Finder.spec --noconfirm
@@ -40,7 +55,7 @@ jobs:
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
-          name="Discrepancy_Finder-${{ github.ref_name }}-windows.exe"
+          name="Discrepancy_Finder-${{ needs.version.outputs.tag }}-windows.exe"
           mv dist/Discrepancy_Finder.exe "$name"
           sha256sum "$name" > "$name.sha256"
           echo "ASSET=$name" >> "$GITHUB_ENV"
@@ -48,7 +63,7 @@ jobs:
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
-          name="Discrepancy_Finder-${{ github.ref_name }}-macos-arm64.zip"
+          name="Discrepancy_Finder-${{ needs.version.outputs.tag }}-macos-arm64.zip"
           ditto -c -k --keepParent "dist/Discrepancy Finder.app" "$name"
           shasum -a 256 "$name" > "$name.sha256"
           echo "ASSET=$name" >> "$GITHUB_ENV"
@@ -62,20 +77,27 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
+    env:
+      TAG: ${{ needs.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
-      - name: Read tag message
+      - name: Extract release notes from CHANGELOG.md
         run: |
-          git fetch --force origin "refs/tags/${{ github.ref_name }}:refs/tags/${{ github.ref_name }}"
-          git tag -l --format='%(contents)' "${{ github.ref_name }}" | sed '/-----BEGIN PGP/,$d' > notes.md
+          awk -v tag="## $TAG" '$0 == tag {found=1; next} found && /^## / {exit} found' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::No '## $TAG' section in CHANGELOG.md"
+            exit 1
+          fi
       - uses: actions/download-artifact@v4
         with:
           path: assets
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
-          name: Discrepancy Finder ${{ github.ref_name }}
+          tag_name: ${{ env.TAG }}
+          target_commitish: ${{ github.sha }}
+          name: Discrepancy Finder ${{ env.TAG }}
           body_path: notes.md
           files: assets/*
