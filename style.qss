@@ -54,3 +54,19 @@ QGroupBox::title {
     margin-left: 10px;
     background-color: transparent;
 }
+
+/* Reminder banner above the results */
+QLabel#reminder {
+    padding: 8px;
+    background: #FFF3CD;
+    border: 1px solid #FFEEBA;
+    border-radius: 6px;
+}
+
+/* Loaded file labels in the status bar */
+QLabel#fileLabel {
+    padding: 4px;
+    border: 1px solid #888888;
+    background: #EEEEFF;
+    border-radius: 4px;
+}

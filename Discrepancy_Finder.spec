@@ -1,71 +1,49 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
+# Build: pyinstaller Discrepancy_Finder.spec
+# Windows -> dist/Discrepancy_Finder.exe, macOS -> dist/Discrepancy Finder.app
+import sys
 from pathlib import Path
 
-# Define paths
-base_dir = Path('c:/Users/ilode/OneDrive/Documents/Projects/discrepancy-finder').resolve()
-icon_file = str(base_dir / 'assets' / 'icons' / 'icons8-yandex-international-240.ico')
-font_file = str(base_dir / 'assets' / 'fonts' / 'Inter-VariableFont_opsz,wght.ttf')
-i18n_dir = str(base_dir / 'i18n')
-config_file = str(base_dir / 'config.yaml')
-style_file = str(base_dir / 'style.qss')
+base_dir = Path(SPECPATH).resolve()
+icon_file = str(base_dir / "assets" / "icons" / "icons8-yandex-international-240.ico")
 
-# Add files to datas
 datas = [
-    (icon_file, 'assets/icons'),
-    (font_file, 'assets/fonts'),
-    (i18n_dir, 'i18n'),
-    (config_file, '.'),
-    (style_file, '.'),
+    (icon_file, "assets/icons"),
+    (str(base_dir / "assets" / "fonts" / "Inter-VariableFont_opsz,wght.ttf"), "assets/fonts"),
+    (str(base_dir / "i18n"), "i18n"),
+    (str(base_dir / "config.yaml"), "."),
+    (str(base_dir / "style.qss"), "."),
 ]
 
 a = Analysis(
-    ['main.py'],
-    pathex=[],
-    binaries=[],
+    [str(base_dir / "main.py")],
+    pathex=[str(base_dir)],
     datas=datas,
-    hiddenimports=['PyQt5.QtWidgets', 'pandas', 'openpyxl', 'yaml'],
-    hookspath=[],
-    hooksconfig={},
-    runtime_hooks=[],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=None,
+    hiddenimports=["openpyxl", "xlrd", "yaml"],
+    excludes=["tkinter", "matplotlib", "IPython", "pytest"],
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=None)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
-    name='Discrepancy_Finder',
+    name="Discrepancy_Finder",
     debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
-    disable_windowed_traceback=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=icon_file,  # Используем абсолютный путь к иконке
+    icon=icon_file,
 )
 
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='Discrepancy_Finder'
-)
+if sys.platform == "darwin":
+    app = BUNDLE(
+        exe,
+        name="Discrepancy Finder.app",
+        icon=None,
+        bundle_identifier="com.ilodezis.discrepancyfinder",
+    )

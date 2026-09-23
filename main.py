@@ -1,30 +1,25 @@
 """GUI application for Discrepancy Finder."""
 
+import json
 import logging
-import os
 import sys
 from pathlib import Path
 
 import pandas as pd
 from PyQt5.QtCore import (
-    Qt,
-    QSize,
-    QModelIndex,
-    QThreadPool,
     QAbstractTableModel,
+    QModelIndex,
+    QObject,
+    QSize,
+    Qt,
+    QThreadPool,
+    pyqtSignal,
 )
-from PyQt5.QtGui import (
-    QIcon,
-    QPalette,
-    QColor,
-    QFontDatabase,
-    QFont,
-)
+from PyQt5.QtGui import QBrush, QColor, QFont, QFontDatabase, QIcon, QPalette
 from PyQt5.QtWidgets import (
     QAction,
     QApplication,
     QFileDialog,
-    QGraphicsDropShadowEffect,
     QHeaderView,
     QInputDialog,
     QLabel,
@@ -32,102 +27,154 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QProgressDialog,
     QStatusBar,
-    QTabWidget,
     QTableView,
+    QTabWidget,
     QTextEdit,
     QToolBar,
     QVBoxLayout,
     QWidget,
 )
 
-from logic import ExcelProcessor
-from background import CompareFilesTask
-
-# Initialize logger
-LOG_PATH = Path.home() / "discrepancy_finder.log"
-logging.basicConfig(
-    filename=str(LOG_PATH),
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    filemode="a",
+from background import Task
+from logic import (
+    STATUS_ONLY_ACT,
+    STATUS_ONLY_REGISTRY,
+    DataError,
+    ExcelProcessor,
+    __version__,
+    resource_path,
 )
 
-# Base directory for resources
-BASE_DIR = Path(__file__).parent.resolve()
+ICON_PATH = "assets/icons/icons8-yandex-international-240.ico"
+FONT_PATH = "assets/fonts/Inter-VariableFont_opsz,wght.ttf"
+LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
-# Initialize Excel processor
-excel_processor = ExcelProcessor()
+ROOT_INDEX = QModelIndex()
+RESULT_COLUMNS = ["ID", "Registry", "Act", "Diff", "Status"]
+STATUS_COLORS = {
+    STATUS_ONLY_REGISTRY: QColor("#FFF4E5"),
+    STATUS_ONLY_ACT: QColor("#E8F1FF"),
+}
 
 
-class PandasModel(QAbstractTableModel):
-    """Qt model for displaying pandas DataFrame in QTableView."""
+def load_languages():
+    """Return {code: translations} for every i18n/*.json file."""
+    languages = {}
+    for path in sorted(resource_path("i18n").glob("*.json")):
+        with open(path, "r", encoding="utf-8") as f:
+            languages[path.stem] = json.load(f)
+    return languages
 
-    def __init__(self, df=pd.DataFrame(), parent=None):
+
+def format_amount(value):
+    return f"{value:,.2f}"
+
+
+class ResultsModel(QAbstractTableModel):
+    """Qt model for the discrepancy table, sortable by any column."""
+
+    def __init__(self, tr, df=None, parent=None):
         super().__init__(parent)
-        self._df = df
+        self.tr = tr
+        self._df = df if df is not None else pd.DataFrame(columns=RESULT_COLUMNS)
 
-    def rowCount(self, parent=QModelIndex()):
-        return len(self._df)
+    def rowCount(self, parent=ROOT_INDEX):
+        return 0 if parent.isValid() else len(self._df)
 
-    def columnCount(self, parent=QModelIndex()):
-        return len(self._df.columns)
+    def columnCount(self, parent=ROOT_INDEX):
+        return 0 if parent.isValid() else len(RESULT_COLUMNS)
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole and index.isValid():
-            return str(self._df.iat[index.row(), index.column()])
+        if not index.isValid():
+            return None
+        column = RESULT_COLUMNS[index.column()]
+        value = self._df.iat[index.row(), index.column()]
+
+        if role == Qt.DisplayRole:
+            if column == "Status":
+                return self.tr[f"status_{value}"]
+            if column in ("Registry", "Act", "Diff"):
+                return format_amount(value)
+            return str(value)
+        if role == Qt.TextAlignmentRole and column in ("Registry", "Act", "Diff"):
+            return int(Qt.AlignRight | Qt.AlignVCenter)
+        if role == Qt.BackgroundRole:
+            color = STATUS_COLORS.get(self._df.iat[index.row(), 4])
+            return QBrush(color) if color else None
         return None
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole and orientation == Qt.Horizontal:
-            return str(self._df.columns[section])
-        return None
+        if role != Qt.DisplayRole:
+            return None
+        if orientation == Qt.Horizontal:
+            return self.tr[f"col_{RESULT_COLUMNS[section].lower()}"]
+        return str(section + 1)
+
+    def sort(self, column, order=Qt.AscendingOrder):
+        name = RESULT_COLUMNS[column]
+        key = (lambda s: s.abs()) if name == "Diff" else None
+        self.layoutAboutToBeChanged.emit()
+        self._df = self._df.sort_values(
+            name, ascending=order == Qt.AscendingOrder, key=key, kind="stable"
+        ).reset_index(drop=True)
+        self.layoutChanged.emit()
+
+
+class LogBridge(QObject):
+    """Carries log messages from any thread to the GUI thread."""
+
+    message = pyqtSignal(str)
 
 
 class LogHandler(logging.Handler):
-    """Custom logging handler that writes to QTextEdit widget."""
+    """Logging handler that forwards records to a QTextEdit via a signal."""
 
     def __init__(self, log_widget):
         super().__init__()
-        self.log_widget = log_widget
+        self.bridge = LogBridge()
+        self.bridge.message.connect(log_widget.append)
 
     def emit(self, record):
-        msg = self.format(record)
-        self.log_widget.append(msg)
+        self.bridge.message.emit(self.format(record))
 
 
 class MainWindow(QMainWindow):
     """Main application window."""
 
-    def __init__(self, lang_code):
+    def __init__(self, tr, processor):
         super().__init__()
-        self.tr = excel_processor.load_translation(lang_code)
-        self.config = excel_processor.config
+        self.tr = tr
+        self.processor = processor
+        self.config = processor.config
 
-        self.setWindowTitle(self.tr["window_title"])
-        self.setWindowIcon(
-            QIcon(resource_path("assets/icons/icons8-yandex-international-240.ico"))
-        )
+        self.setWindowTitle(f"{self.tr['window_title']} {__version__}")
+        self.setWindowIcon(QIcon(str(resource_path(ICON_PATH))))
         self.resize(self.config["window"]["width"], self.config["window"]["height"])
 
-        self.registry_path = None
-        self.act_path = None
-        self.diffs = pd.DataFrame()
-        self.thread_pool = QThreadPool()
+        self.files = {"reg": None, "act": None}
+        self.diffs = pd.DataFrame(columns=RESULT_COLUMNS)
+        self.thread_pool = QThreadPool.globalInstance()
+        self._tasks = set()
+        self.dlg = None
 
         self._build_ui()
         self._setup_logging()
 
     def _build_ui(self):
         """Build the user interface."""
-        # Reminder banner
         self.reminder = QLabel(self.tr["reminder"], self)
+        self.reminder.setObjectName("reminder")
         self.reminder.setTextFormat(Qt.RichText)
-        self.reminder.setStyleSheet(
-            "padding:8px; background:#fff3cd; border:1px solid #ffeeba; border-radius:6px;"
-        )
+        self.reminder.setWordWrap(True)
 
-        # Tab widget
         self.table = QTableView()
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        # Default order matches find_discrepancies: biggest |Diff| first
+        header.setSortIndicator(RESULT_COLUMNS.index("Diff"), Qt.DescendingOrder)
+        self.table.setSortingEnabled(True)
+        self.table.setModel(ResultsModel(self.tr))
+
         self.log = QTextEdit()
         self.log.setReadOnly(True)
 
@@ -135,7 +182,6 @@ class MainWindow(QMainWindow):
         tabs.addTab(self.table, self.tr["tab_results"])
         tabs.addTab(self.log, self.tr["tab_logs"])
 
-        # Layout
         central = QWidget()
         vbox = QVBoxLayout(central)
         vbox.setContentsMargins(12, 12, 12, 12)
@@ -144,17 +190,10 @@ class MainWindow(QMainWindow):
         vbox.addWidget(tabs)
         self.setCentralWidget(central)
 
-        # Create UI elements
         self._create_actions()
         self._create_menu()
         self._create_toolbar()
         self._create_statusbar()
-        # Shadow effect
-        shadow = QGraphicsDropShadowEffect(self.centralWidget())
-        shadow.setBlurRadius(self.config["colors"]["shadow"]["blur"])
-        shadow.setOffset(self.config["colors"]["shadow"]["offset"])
-        shadow.setColor(rgba_to_qcolor(self.config["colors"]["shadow"]["color"]))
-        self.centralWidget().setGraphicsEffect(shadow)
 
     def _create_actions(self):
         """Create application actions."""
@@ -179,10 +218,8 @@ class MainWindow(QMainWindow):
         self.a_exit = QAction(self.tr["exit"], self)
         self.a_exit.triggered.connect(self.close)
 
-    def _create_menu(self):
-        """Create application menu."""
-        menu = self.menuBar().addMenu(self.tr["menu_file"])
-        actions = [
+    def _main_actions(self):
+        return [
             self.a_open_reg,
             self.a_open_act,
             None,
@@ -193,7 +230,11 @@ class MainWindow(QMainWindow):
             None,
             self.a_exit,
         ]
-        for action in actions:
+
+    def _create_menu(self):
+        """Create application menu."""
+        menu = self.menuBar().addMenu(self.tr["menu_file"])
+        for action in self._main_actions():
             if action:
                 menu.addAction(action)
             else:
@@ -203,266 +244,253 @@ class MainWindow(QMainWindow):
         """Create application toolbar."""
         toolbar = QToolBar()
         toolbar.setIconSize(QSize(24, 24))
+        toolbar.setMovable(False)
         self.addToolBar(toolbar)
-
-        actions = [
-            self.a_open_reg,
-            self.a_open_act,
-            None,
-            self.a_compare,
-            self.a_save,
-            None,
-            self.a_clear,
-            self.a_exit,
-        ]
-        for action in actions:
+        for action in self._main_actions():
             if action:
                 toolbar.addAction(action)
             else:
                 toolbar.addSeparator()
-
-        # Load style from file
-        with open(Path(BASE_DIR) / "style.qss", "r") as f:
-            toolbar.setStyleSheet(f.read())
 
     def _create_statusbar(self):
         """Create application status bar."""
         statusbar = QStatusBar()
         self.setStatusBar(statusbar)
 
-        self.l_reg = QLabel(self.tr["registry_label"])
-        self.l_act = QLabel(self.tr["act_label"])
-        self.l_sum_reg = QLabel(self.tr["sum_registry"])
-        self.l_sum_act = QLabel(self.tr["sum_act"])
-
-        for label in (self.l_reg, self.l_act, self.l_sum_reg, self.l_sum_act):
+        self.labels = {"reg": QLabel(), "act": QLabel()}
+        for label in self.labels.values():
+            label.setObjectName("fileLabel")
             statusbar.addPermanentWidget(label)
-            label.setStyleSheet(
-                "padding:4px; border:1px solid #888; background:#eef; border-radius:4px;"
+        self._update_file_labels()
+
+    def _update_file_labels(self):
+        """Show loaded file names, detected columns and totals."""
+        names = {"reg": "registry", "act": "act"}
+        for mode, label in self.labels.items():
+            loaded = self.files[mode]
+            name = names[mode]
+            if loaded is None:
+                label.setText(self.tr[f"{name}_label"].format("--", format_amount(0)))
+                label.setToolTip("")
+                continue
+            label.setText(
+                self.tr[f"{name}_label"].format(
+                    loaded.path.name, format_amount(loaded.total)
+                )
             )
+            label.setToolTip(
+                self.tr["file_tooltip"].format(
+                    loaded.id_col, loaded.amount_col, loaded.rows, len(loaded.data)
+                )
+            )
+
+    def _run(self, title, fn, args, on_finished):
+        """Run ``fn(*args)`` in the background behind a busy dialog."""
+        self.dlg = QProgressDialog(title, None, 0, 0, self)
+        self.dlg.setWindowTitle(title)
+        self.dlg.setWindowModality(Qt.WindowModal)
+        self.dlg.setMinimumWidth(300)
+        self.dlg.setCancelButton(None)
+        self.dlg.setMinimumDuration(0)
+        self.dlg.show()
+
+        task = Task(fn, *args)
+        task.setAutoDelete(False)
+        self._tasks.add(task)
+
+        def done(handler, payload):
+            self._tasks.discard(task)
+            self.dlg.close()
+            handler(payload)
+
+        task.signals.finished.connect(lambda result: done(on_finished, result))
+        task.signals.error.connect(lambda error: done(self._show_error, error))
+        self.thread_pool.start(task)
+
+    def _show_error(self, error):
+        if isinstance(error, DataError):
+            message = self.tr[error.key].format(*error.params)
+        else:
+            message = f"{type(error).__name__}: {error}"
+        QMessageBox.critical(self, self.tr["title_error"], message)
 
     def _load(self, mode):
         """Load Excel file for registry or act."""
         title = self.tr["open_registry"] if mode == "reg" else self.tr["open_act"]
         path, _ = QFileDialog.getOpenFileName(
-            self, title, "", "Excel Files (*.xlsx *.xls)"
+            self, title, "", "Excel (*.xlsx *.xlsm *.xls)"
         )
         if not path:
             return
 
-        try:
-            df, id_col, amt_col = excel_processor.load_excel(Path(path))
-            df_clean = excel_processor.preprocess_dataframe(df, id_col, amt_col)
-            total = pd.to_numeric(df_clean[amt_col], errors="coerce").fillna(0).sum()
-
-            if mode == "reg":
-                self.registry_path = path
-                self.l_reg.setText(f"{self.tr['open_registry']}: {Path(path).name}")
-                self.l_sum_reg.setText(
-                    f"{self.tr['sum_registry'].split(':')[0]}: {total:,.2f}"
-                )
-            else:
-                self.act_path = path
-                self.l_act.setText(f"{self.tr['open_act']}: {Path(path).name}")
-                self.l_sum_act.setText(
-                    f"{self.tr['sum_act'].split(':')[0]}: {total:,.2f}"
-                )
-
+        def loaded(result):
+            self.files[mode] = result
+            self._update_file_labels()
             self._update_buttons()
-            logging.info("Loaded %s: %s", mode, path)
+            if result.unparsed_amounts:
+                QMessageBox.warning(
+                    self,
+                    self.tr["title_warning"],
+                    self.tr["warn_unparsed"].format(
+                        result.unparsed_amounts, result.path.name
+                    ),
+                )
 
-        except FileNotFoundError as e:
-            logging.exception("Failed to find file: %s", path)
-            QMessageBox.critical(
-                self, "Error", self.tr["err_load"].format(Path(path).name, str(e))
-            )
-        except pd.errors.EmptyDataError:
-            logging.exception("Empty file: %s", path)
-            QMessageBox.critical(
-                self,
-                "Error",
-                self.tr["err_load"].format(Path(path).name, "File is empty"),
-            )
-        except (pd.errors.ParserError, ValueError) as e:
-            logging.exception("Failed to parse file: %s", path)
-            QMessageBox.critical(
-                self, "Error", self.tr["err_load"].format(Path(path).name, str(e))
-            )
+        self._run(self.tr["dlg_load"], self.processor.load_file, (Path(path),), loaded)
 
     def _update_buttons(self):
         """Update button states based on loaded files."""
-        self.a_compare.setEnabled(bool(self.registry_path and self.act_path))
+        self.a_compare.setEnabled(all(self.files.values()))
 
     def _compare(self):
-        """Compare Excel files in background thread."""
-        if not (self.registry_path and self.act_path):
-            QMessageBox.warning(self, "Warning", self.tr["warn_load"])
+        """Compare the loaded files."""
+        reg, act = self.files["reg"], self.files["act"]
+        if not (reg and act):
+            QMessageBox.warning(self, self.tr["title_warning"], self.tr["warn_load"])
             return
+        self._run(
+            self.tr["dlg_compare"],
+            self.processor.find_discrepancies,
+            (reg.data, act.data),
+            self._show_results,
+        )
 
-        # Create progress dialog
-        self.dlg = QProgressDialog(self.tr["dlg_compare"], None, 0, 100, self)
-        self.dlg.setWindowTitle(self.tr["dlg_compare"])
-        self.dlg.setWindowModality(Qt.WindowModal)
-        self.dlg.setMinimumWidth(300)
-        self.dlg.setCancelButton(None)
-        self.dlg.setValue(0)
-        self.dlg.show()
-
-        # Create and start background task
-        task = CompareFilesTask(self.registry_path, self.act_path)
-        task.signals.progress.connect(self.dlg.setValue)
-        task.signals.finished.connect(self._handle_comparison_result)
-        task.signals.error.connect(self._handle_comparison_error)
-        self.thread_pool.start(task)
-
-    def _handle_comparison_result(self, diffs):
-        """Handle successful comparison results."""
-        self.dlg.close()
+    def _show_results(self, diffs):
+        """Display comparison results."""
+        self.diffs = diffs
+        self.table.setModel(ResultsModel(self.tr, diffs))
+        self.a_save.setEnabled(not diffs.empty)
 
         if diffs.empty:
-            self.table.setModel(PandasModel())
-            self.a_save.setEnabled(False)
-            QMessageBox.information(self, "Info", self.tr["no_diff"])
+            QMessageBox.information(self, self.tr["title_info"], self.tr["no_diff"])
+            logging.info("No discrepancies found")
             return
 
-        self.diffs = diffs
-        self.table.setModel(PandasModel(self.diffs))
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.a_save.setEnabled(True)
-
-        QMessageBox.information(self, "Info", self.tr["diff_found"].format(len(diffs)))
-        logging.info("Found %s discrepancies", len(diffs))
-
-    def _handle_comparison_error(self, error_msg):
-        """Handle comparison task errors."""
-        self.dlg.close()
-        QMessageBox.critical(self, "Error", str(error_msg))
+        counts = diffs["Status"].value_counts()
+        QMessageBox.information(
+            self,
+            self.tr["title_info"],
+            self.tr["diff_found"].format(
+                len(diffs),
+                counts.get(STATUS_ONLY_REGISTRY, 0),
+                counts.get(STATUS_ONLY_ACT, 0),
+                format_amount(diffs["Diff"].sum()),
+            ),
+        )
+        logging.info("Found %d discrepancies", len(diffs))
 
     def _clear(self):
         """Clear all loaded data."""
-        self.registry_path = None
-        self.act_path = None
-        self.diffs = pd.DataFrame()
-
-        self.table.setModel(PandasModel())
+        self.files = {"reg": None, "act": None}
+        self.diffs = pd.DataFrame(columns=RESULT_COLUMNS)
+        self.table.setModel(ResultsModel(self.tr))
         self.log.clear()
-
-        self.l_reg.setText(self.tr["registry_label"])
-        self.l_act.setText(self.tr["act_label"])
-        self.l_sum_reg.setText(self.tr["sum_registry"])
-        self.l_sum_act.setText(self.tr["sum_act"])
-
+        self._update_file_labels()
         self.a_compare.setEnabled(False)
         self.a_save.setEnabled(False)
-
         logging.info("Cleared data")
 
+    def _export_frame(self):
+        """Results with translated headers and statuses, ready for export."""
+        df = self.diffs.copy()
+        df["Status"] = df["Status"].map(lambda s: self.tr[f"status_{s}"])
+        return df.rename(
+            columns={c: self.tr[f"col_{c.lower()}"] for c in RESULT_COLUMNS}
+        )
+
     def _save(self):
-        """Save comparison results to file."""
+        """Save comparison results to .xlsx or tab-separated .txt."""
         if self.diffs.empty:
             return
 
-        default = Path.home() / "Downloads" / "discrepancies.txt"
+        default = Path.home() / "Downloads" / "discrepancies.xlsx"
         fn, _ = QFileDialog.getSaveFileName(
-            self, self.tr["save_dialog"], str(default), "Text Files (*.txt)"
+            self,
+            self.tr["save_dialog"],
+            str(default),
+            "Excel (*.xlsx);;Text (*.txt)",
         )
         if not fn:
             return
 
+        path = Path(fn)
+        if path.suffix.lower() not in (".xlsx", ".txt"):
+            path = path.with_suffix(".xlsx")
+
         try:
-            with open(fn, "w", encoding="utf-8") as f:
-                f.write("ID\tRegistry\tAct\tDiff\n")
-                for _, row in self.diffs.iterrows():
-                    f.write(
-                        f"{row['ID']}\t{row['Registry']}\t{row['Act']}\t{row['Diff']}\n"
-                    )
-
-            QMessageBox.information(
-                self, self.tr["save_dialog"], self.tr["msg_saved"].format(fn)
-            )
-            logging.info("Saved to %s", fn)
-
-        except PermissionError as e:
-            logging.exception("Permission denied when saving to %s", fn)
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Access denied. Make sure you have write permissions: {str(e)}",
-            )
+            df = self._export_frame()
+            if path.suffix.lower() == ".xlsx":
+                df.to_excel(path, index=False)
+            else:
+                df.to_csv(path, sep="\t", index=False, float_format="%.2f")
         except OSError as e:
-            logging.exception("Failed to save %s", fn)
-            QMessageBox.critical(self, "Error", f"Failed to save file: {str(e)}")
+            logging.exception("Failed to save %s", path)
+            QMessageBox.critical(
+                self, self.tr["title_error"], self.tr["err_save"].format(path, e)
+            )
+            return
+
+        QMessageBox.information(
+            self, self.tr["save_dialog"], self.tr["msg_saved"].format(path)
+        )
+        logging.info("Saved to %s", path)
 
     def _setup_logging(self):
-        """Setup logging to both file and GUI."""
+        """Mirror log records to the Logs tab."""
         handler = LogHandler(self.log)
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        )
+        handler.setFormatter(logging.Formatter(LOG_FORMAT))
         logging.getLogger().addHandler(handler)
-        logging.getLogger().setLevel(logging.INFO)
 
 
-def hex_to_rgb(hex_color):
-    """Convert hex color string to RGB tuple."""
-    hex_str = hex_color.lstrip("#")
-    return tuple(int(hex_str[i : i + 2], 16) for i in (0, 2, 4))
+def setup_file_logging(config):
+    """Log to a file in the user's home directory."""
+    handlers = []
+    try:
+        handlers.append(
+            logging.FileHandler(Path.home() / config["log_path"], encoding="utf-8")
+        )
+    except OSError:
+        pass  # Read-only home: keep logging to the GUI only
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, handlers=handlers)
 
 
-def rgba_to_qcolor(rgba):
-    """Convert RGBA values to QColor."""
-    if len(rgba) != 4:
-        raise ValueError("RGBA color must have 4 components")
-    return QColor(rgba[0], rgba[1], rgba[2], rgba[3])
+def choose_language(languages):
+    """Ask for the UI language; returns None if the dialog was cancelled."""
+    names = [tr["language_name"] for tr in languages.values()]
+    name, ok = QInputDialog.getItem(
+        None, "Discrepancy Finder", "Language / Язык", names, 0, editable=False
+    )
+    if not ok:
+        return None
+    return next(tr for tr in languages.values() if tr["language_name"] == name)
 
 
-def resource_path(relative_path):
-    """Get absolute path to resource for PyInstaller compatibility."""
-    base_path = getattr(sys, "_MEIPASS", BASE_DIR)
-    return os.path.join(base_path, relative_path)
+def main():
+    app = QApplication(sys.argv)
+    processor = ExcelProcessor()
+    config = processor.config
+    setup_file_logging(config)
+
+    app.setWindowIcon(QIcon(str(resource_path(ICON_PATH))))
+    QFontDatabase.addApplicationFont(str(resource_path(FONT_PATH)))
+    app.setFont(QFont("Inter", 10))
+
+    with open(resource_path("style.qss"), "r", encoding="utf-8") as f:
+        app.setStyleSheet(f.read())
+
+    palette = app.palette()
+    palette.setColor(QPalette.Window, QColor(config["colors"]["window_background"]))
+    palette.setColor(QPalette.Highlight, QColor(config["colors"]["accent"]))
+    app.setPalette(palette)
+
+    tr = choose_language(load_languages())
+    if tr is None:
+        return 0
+
+    win = MainWindow(tr, processor)
+    win.show()
+    return app.exec_()
 
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    # Load assets
-    icon_path = resource_path("assets/icons/icons8-yandex-international-240.ico")
-    app.setWindowIcon(QIcon(icon_path))
-
-    font_path = resource_path("assets/fonts/Inter-VariableFont_opsz,wght.ttf")
-    QFontDatabase.addApplicationFont(font_path)
-    app.setFont(QFont("Inter", 10))
-
-    # Load and apply global stylesheet
-    with open(Path(BASE_DIR) / "style.qss", "r") as f:
-        app.setStyleSheet(f.read())
-
-    # Set color palette
-    palette = QPalette()
-
-    # Set window background color
-    bg_color = hex_to_rgb(excel_processor.config["colors"]["window_background"])
-    palette.setColor(QPalette.Window, QColor(*bg_color))
-
-    # Set accent color
-    accent_color = hex_to_rgb(excel_processor.config["colors"]["accent"])
-    palette.setColor(QPalette.Highlight, QColor(*accent_color))
-
-    app.setPalette(palette)
-
-    # Show language selection dialog with built-in strings first
-    lang, _ = QInputDialog.getItem(
-        None,
-        "Select Language",
-        "Select language / Выберите язык",
-        ["English", "Русский"],
-        0,
-        editable=False,
-    )
-    code = "en" if lang == "English" else "ru"
-
-    # Create and show main window
-    win = MainWindow(code)
-    win.show()
-
-    sys.exit(app.exec_())
+    sys.exit(main())
