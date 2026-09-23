@@ -26,24 +26,37 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    name="Discrepancy_Finder",
-    debug=False,
-    strip=False,
-    upx=True,
-    console=False,
-    icon=icon_file,
-)
-
 if sys.platform == "darwin":
+    # .app bundles must be built in onedir mode
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="Discrepancy_Finder",
+        debug=False,
+        strip=False,
+        upx=False,
+        console=False,
+    )
+    coll = COLLECT(exe, a.binaries, a.datas, name="Discrepancy_Finder")
     app = BUNDLE(
-        exe,
+        coll,
         name="Discrepancy Finder.app",
         icon=None,
         bundle_identifier="com.ilodezis.discrepancyfinder",
+    )
+else:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.datas,
+        [],
+        name="Discrepancy_Finder",
+        debug=False,
+        strip=False,
+        upx=True,
+        console=False,
+        icon=icon_file,
     )
