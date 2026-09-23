@@ -1,12 +1,14 @@
 name: release
 
 # Builds Windows/macOS binaries and publishes a GitHub Release v<__version__>.
-# Run it from the Actions tab (or push a v* tag). Release notes come from the
-# matching "## v<version>" section of CHANGELOG.md.
+# Runs automatically when a push to main bumps __version__ to a version that has
+# no tag yet; can also be started from the Actions tab. Release notes come from
+# the matching "## v<version>" section of CHANGELOG.md.
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: [logic.py, CHANGELOG.md, .github/workflows/release.yml]
 
 permissions:
   contents: write
@@ -16,19 +18,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.tag }}
+      exists: ${{ steps.version.outputs.exists }}
     steps:
       - uses: actions/checkout@v4
       - id: version
         run: |
           tag="v$(sed -n 's/^__version__ = "\(.*\)"/\1/p' logic.py)"
-          if [ "${{ github.ref_type }}" = "tag" ] && [ "${{ github.ref_name }}" != "$tag" ]; then
-            echo "::error::Tag ${{ github.ref_name }} does not match __version__ ($tag)"
-            exit 1
-          fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$tag is already released, nothing to do"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
   build:
     needs: version
+    if: needs.version.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

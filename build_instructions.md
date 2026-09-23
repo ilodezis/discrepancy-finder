@@ -46,7 +46,7 @@ shasum -a 256 dist/Discrepancy_Finder
 ## 🚀 Релиз через GitHub Actions
 
 1. Подними `__version__` в `logic.py` и добавь секцию `## vX.Y.Z` в `CHANGELOG.md`.
-2. Запушь в `main`.
-3. Actions → **release** → **Run workflow**.
+2. Запушь в `main`: релиз соберётся автоматически, если тега `vX.Y.Z` ещё нет.
+   Пересобрать вручную можно в Actions → **release** → **Run workflow**.
 
 Workflow прогонит тесты, соберёт `.exe` и `.app`, создаст тег `vX.Y.Z` и выложит Release с описанием из `CHANGELOG.md` и sha256 для каждого файла.
